@@ -17,20 +17,6 @@ rojo serve place.project.json
 
 `place.project.json` syncs the package to `ReplicatedStorage.MoonPlayer`.
 
-## Module Surface
-
-```lua
-local MoonPlayer = require(path.to.MoonPlayer)
-
-MoonPlayer.Compiler
-MoonPlayer.Player
-```
-
-The root module returns:
-
-- `MoonPlayer.Compiler`
-- `MoonPlayer.Player`
-
 ## Runtime Usage
 
 `Player.new(track, instanceOverrides?)` expects a compiled MoonSave
