@@ -3,7 +3,7 @@ export type Deserializer = {
 }
 
 export type Serializer = {
-	new: (MoonSave: StringValue) -> Serializer,
+	new: (MoonSave: StringValue, CompressionLevel: number?) -> Serializer,
 	
 	Build: (Serializer) -> StringValue
 }
@@ -23,15 +23,21 @@ export type AnimationPlayer = {
 	Stop: (AnimationPlayer) -> (),
 	Resume: (AnimationPlayer) -> (),
 	
-	OnFinished: (AnimationPlayer, Callback: () -> any) -> (),
-	
 	ReplaceInstance: (
 		AnimationPlayer, 
 		Original: Instance | string,
 		New: Instance
 	) -> (),
-	
-	RegisterMarker: (
+
+	OnFinished: (AnimationPlayer, Callback: () -> any) -> (),
+
+	OnFrameReached: (
+		AnimationPlayer, 
+		Frame: number, 
+		Callback: () -> any
+	) -> ()
+
+	OnMarkerReached: (
 		AnimationPlayer, 
 		MarkerName: string, 
 		Callback: (target: Instance, isFinished: boolean) -> ()

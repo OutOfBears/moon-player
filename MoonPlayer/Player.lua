@@ -36,8 +36,10 @@ function Player.new(track, instanceOverrides)
 		FrameState = {},
 		
 		PartAttachments = {},
+
 		MarkerCallbacks = {},
-		FinishedCallbacks = {}
+		FinishedCallbacks = {},
+		FrameCallbacks = {}
 	}, { __index = Player })
 
 	return self
@@ -60,16 +62,22 @@ function Player:Play()
 	PlayingTracks[self] = true
 end
 
-function Player:OnFinished(callback)
-	self.FinishedCallbacks[callback] = true
-end
 
 function Player:ReplaceInstance(original, new)
 	return self.Deserialize:overrideInstance(original, new)
 end
 
-function Player:RegisterMarker(name, callback)
+
+function Player:OnMarkerReached(name, callback)
 	self.MarkerCallbacks[name] = callback
+end
+
+function Player:OnFinished(callback)
+	self.FinishedCallbacks[callback] = true
+end
+
+function Player:OnFrameReached(frame, callback)
+	self.FrameCallbacks[tostring(frame)] = callback
 end
 
 
@@ -212,8 +220,15 @@ local function update(delta)
 			continue
 		end
 
-		local frame = track.FrameAdvance[tostring(currentFrame)]
-		local markers = track.Deserializer.markers[tostring(currentFrame)]
+		local frameId = tostring(currentFrame)
+
+		local frame = track.FrameAdvance[frameId]
+		local markers = track.Deserializer.markers[frameId]
+
+		local frameCallback = track.FrameCallbacks[frameId]
+		if frameCallback then
+			task.spawn(frameCallback)
+		end
 
 		local instanceOverride = track.Deserializer.targetOverrides
 		local instances = track.Deserializer.targets
