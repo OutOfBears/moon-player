@@ -1,6 +1,7 @@
 local Resolver = require("../Resolver")
+local StaticProps = require("../../StaticProps")
 
-local function parseKeyframes(keyframes, length)
+local function parseKeyframes(keyframes, instance)
 	local packs = keyframes:QueryDescendants(">Folder")
 	local idx = {}
 	
@@ -28,9 +29,12 @@ local function parseKeyframes(keyframes, length)
 			local frame = values[tostring(i)]
 			local frameTime = startTime + i
 			local lastFrame = frames[#frames]
+
+			local isStatic = StaticProps[instance.ClassName]
+				and StaticProps[instance.ClassName][keyframes.Name]
 			
 			local diff = frameTime - (lastFrame and lastFrame.startTime or frameTime)
-			if diff > 1 then
+			if diff > 1 and (lastFrame and not lastFrame.static) and not isStatic then
 				lastFrame.count = diff
 			end
 
@@ -58,15 +62,11 @@ local function parseKeyframes(keyframes, length)
 					end	
 				end
 			end
-			
-			if keyframes.Name == "AttachToPart" and not frame.Value then
-				warn("AttachToPart is empty")
-				continue
-			end
-			
+
 			table.insert(frames, {
 				startTime = frameTime,
 				value = frame.Value,
+				static = isStatic,
 				count = 1
 			})
 		end
@@ -111,12 +111,12 @@ local function ParseHierarchy(data, save)
 		local rig = frame:FindFirstChild("Rig")
 		local markerTrack = frame:FindFirstChild("MarkerTrack")
 
-		if rig and item.Path.ItemType == "Rig" then
-			local realInstance = Resolver.resolveAnimPath(item.Path)
-			if not realInstance then
-				return error("failed to resolve: " .. table.concat(item.Path.InstanceNames, "."))
-			end
+		local realInstance = Resolver.resolveAnimPath(item.Path)
+		if not realInstance then
+			return error("failed to resolve: " .. table.concat(item.Path.InstanceNames, "."))
+		end
 
+		if rig and item.Path.ItemType == "Rig" then
 			local jointsHier, findJointSmart = Resolver.resolveJoints(realInstance)
 			
 			local joints = rig:QueryDescendants(">#_joint")
@@ -144,7 +144,7 @@ local function ParseHierarchy(data, save)
 					end
 					
 					local isMotor6D = jointData.Joint:IsA("Motor6D")
-					for _, keyframe in parseKeyframes(keyframes, length) do
+					for _, keyframe in parseKeyframes(keyframes, realInstance) do
 						local frameData = frameBuffer[tostring(keyframe.startTime)]
 						if not frameData then
 							frameData = {}
@@ -192,7 +192,7 @@ local function ParseHierarchy(data, save)
 					instDefaults[child.Name] = default.Value
 				end
 				
-				for _, keyframe in parseKeyframes(child, length) do
+				for _, keyframe in parseKeyframes(child, realInstance) do
 					local frameData = frameBuffer[tostring(keyframe.startTime)]
 					if not frameData then
 						frameData = {}
