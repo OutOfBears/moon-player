@@ -212,14 +212,24 @@ function Deserializer:deserializeMarkers()
 				local data = {}
 
 				for _ = 1, stream:readu16() do
-					table.insert(data, stream:readstring(8))
+					local name = stream:readstring(8)
+					local kfMarkers = {}
+
+					for _ = 1, stream:readu8() do
+						local kfMarkerName = stream:readstring(8)	
+						local kfMarkerValue = stream:readstring(16)
+
+						kfMarkers[kfMarkerName] = kfMarkerValue
+					end
+
+					data[name] = kfMarkers
 				end
 
 				markerData[tostring(id)] = data
 			end
 		end		
 	end
-	
+
 	self.markers = markers
 end
 

@@ -35,7 +35,7 @@ local player = MoonPlayer.Player.new(track, {
 	["Workspace.Dummy"] = workspace.Dummy,
 })
 
-player:OnMarkerReached("Footstep", function(target, isFinished)
+player:OnMarkerReached("Footstep", function(target, isFinished, kfMarkers)
 	print("marker", target, isFinished)
 end)
 
@@ -56,7 +56,7 @@ Main methods:
 - `Stop()` stops playback and restores defaults.
 - `Resume()` continues playback without rewinding.
 - `OnFinished(callback)` runs the callback when the track ends.
-- `OnMarkerReached(name, callback)` runs `callback(targetInstance, isFinishedMarker)` when a named marker is reached.
+- `OnMarkerReached(name, callback)` runs `callback(targetInstance, isFinishedMarker, kfmarkers)` when a named marker is reached.
 - `OnFrameReached(frame, callback)` runs `callback()` when a target frame has been reached
 
 ## Compiling a Track

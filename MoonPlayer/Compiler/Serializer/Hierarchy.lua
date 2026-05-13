@@ -75,7 +75,7 @@ local function parseKeyframes(keyframes, instance)
 	return frames
 end
 
-local function insertMarker(markers, frame, identifier, name)
+local function insertMarker(markers, frame, identifier, name, kfMarkers)
 	local markerData = markers[frame]
 	if not markerData then
 		markerData = {}
@@ -83,10 +83,28 @@ local function insertMarker(markers, frame, identifier, name)
 	end
 
 	if not markerData[identifier] then
-		markerData[identifier] = { name }
+		markerData[identifier] = {
+			[name] = kfMarkers
+		}
 	else 
-		table.insert(markerData[identifier], name)
+		markerData[identifier] = kfMarkers
 	end
+end
+
+local function parseKFMarkers(track)
+	local kf = track:FindFirstChild("KFMarkers")
+	local markers = {}
+	
+	if kf then
+		for _, val in kf:QueryDescendants("StringValue > StringValue#Val") do
+			local name = val.Parent.Value
+			local val = val.Value 
+			
+			markers[name] = val
+		end
+	end
+
+	return markers
 end
 
 local function ParseHierarchy(data, save)
@@ -99,7 +117,6 @@ local function ParseHierarchy(data, save)
 		finish = {}
 	}
 	
-	local length = data.Information.Length
 	for idx, item in data.Items do
 		local identifier = item.Identifier
 		local itemData = {
@@ -228,13 +245,14 @@ local function ParseHierarchy(data, save)
 				local startFrame = assert(tonumber(track.Name))
 				local width = assert(track:FindFirstChild("width")).Value
 				local name = assert(track:FindFirstChild("name")).Value
-				
-				insertMarker(markers.start, startFrame, identifier, name)
+				local kfMarkers = parseKFMarkers(track)
+
+				insertMarker(markers.start, startFrame, identifier, name, kfMarkers)
 				
 				if width > 0 then
 					local finishFrame = math.min(startFrame + width, data.Information.Length)
 
-					insertMarker(markers.finish, finishFrame, identifier, name)
+					insertMarker(markers.finish, finishFrame, identifier, name, kfMarkers)
 				end
 			end
 		end

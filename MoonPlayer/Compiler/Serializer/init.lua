@@ -361,6 +361,7 @@ function Serializer:serializeMarkerTrack(stream, track)
 	local frameCount = 0
 	
 	stream:createMarker("COUNT", 2)
+	
 	for frameId, markers in track do
 		stream:writeu16(frameId)
 		stream:createMarker(`{frameId}`, 2)
@@ -370,11 +371,31 @@ function Serializer:serializeMarkerTrack(stream, track)
 			count += 1
 
 			stream:writeu16(inst)
-			stream:writeu16(#markers)
-			
-			for _, marker in markers do
-				stream:writestring(marker, 8)
+			stream:createMarker("MARKER_COUNT", 2)
+
+			local markerCount = 0 
+			for name, kfMarkers in markers do
+				stream:writestring(name, 8)
+				stream:createMarker("KF_MARKER_COUNT", 1)
+
+				local kfMarkerCount = 0
+				for name, data in kfMarkers do
+					stream:writestring(name, 8)
+					stream:writestring(data, 16)
+
+					kfMarkerCount += 1		
+				end
+
+				stream:seekMarker("KF_MARKER_COUNT")
+				stream:writeu8(kfMarkerCount)
+				stream:resume()
+
+				markerCount += 1
 			end
+
+			stream:seekMarker("MARKER_COUNT")
+			stream:writeu16(markerCount)
+			stream:resume()
 		end
 
 		stream:seekMarker(`{frameId}`)

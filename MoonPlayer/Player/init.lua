@@ -14,6 +14,7 @@ local SequentialReader = Compiler.SequentialReader
 local Deserializer = Compiler.Deserializer
 
 local PlayingTracks = {}
+local IGNORED_DEFAULTS = { "Emit" }
 
 local Player = {}
 
@@ -63,7 +64,6 @@ function Player:Play()
 	PlayingTracks[self] = true
 end
 
-
 function Player:ReplaceInstance(original, new)
 	return self.Deserialize:overrideInstance(original, new)
 end
@@ -80,28 +80,6 @@ end
 function Player:OnFrameReached(frame, callback)
 	self.FrameCallbacks[tostring(frame)] = callback
 end
-
-
-function Player:_applyPropValue(inst, name, value, isModel)
-	if name == "AttachToPart" then
-		self.PartAttachments[inst] = value
-	elseif name == "Clear" then
-		inst:Clear()	
-	elseif name == "Emit" then
-		inst:Emit(value)
-	else 
-		if isModel then
-			if name == "Scale" then
-				inst:ScaleTo(value)
-			elseif name == "CFrame" then
-				inst:PivotTo(value)
-			end
-		else 
-			inst[name] = value
-		end
-	end
-end
-
 
 function Player:_restore()
 	self.Reader = SequentialReader.new(self.Deserializer)	
@@ -122,6 +100,10 @@ function Player:_restore()
 			or instances[instanceId]
 		
 		for name, value in props do 
+			if table.find(IGNORED_DEFAULTS, name) then
+				continue
+			end
+
 			ApplyProp(realInstance, name, value, self)
 		end
 	end
@@ -210,8 +192,6 @@ local function update(delta)
 			end
 			
 			PlayingTracks[track] = nil
-			track:_restore()
-
 			continue
 		end
 		
@@ -259,14 +239,15 @@ local function update(delta)
 					local realInstance = instanceOverride[instanceId] 
 						or instances[instanceId]
 					
-					for _, marker in markerList do
+					for marker, kfMarkers in markerList do
 						local callback = track.MarkerCallbacks[marker]
 						
 						if callback then
 							task.spawn(
 								callback,
 								realInstance,
-								markerType == "finish"
+								markerType == "finish",
+								kfMarkers
 							)
 						end
 					end

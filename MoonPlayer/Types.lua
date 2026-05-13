@@ -40,7 +40,11 @@ export type AnimationPlayer = {
 	OnMarkerReached: (
 		AnimationPlayer, 
 		MarkerName: string, 
-		Callback: (target: Instance, isFinished: boolean) -> ()
+		Callback: (
+			Target: Instance, 
+			IsFinished: boolean,
+			KFMarkers: { [string]: string }
+		) -> ()
 	) -> ()
 }
 
