@@ -59,8 +59,9 @@ function Player:Resume()
 end
 
 function Player:Play()
-	self:_buildMarkerSequence()
 	self:_restore()
+
+	self:_buildMarkerSequence()
 	self:_advance()
 	
 	PlayingTracks[self] = true
