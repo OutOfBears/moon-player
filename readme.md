@@ -75,7 +75,7 @@ local Flags = MoonPlayer.Compiler.Flags
 
 local sourceSave = workspace.MoonSave
 
-local flags = Flags.CompressionLevel(7) + Flags.CFrameSerializeMethod.Bytes
+local flags = Flags.CompressionLevel(7) + Flags.CFrameSerializeMethod.Bytes("F32", "F16")
 local compiledTrack = MoonPlayer.Compiler.Serializer.new(sourceSave, flags):Build()
 
 compiledTrack.Name = "Wave"

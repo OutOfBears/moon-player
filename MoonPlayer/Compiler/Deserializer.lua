@@ -48,7 +48,7 @@ function Deserializer.new(save, overrides)
 	self:deserializeHierarchy()
 	self:deserializeDefaults()
 	
-	self.frameBuffer = self:decompressBuffer(save.frames)
+	self.frameBuffer = self:decompressBufferFromParts(save.frames)
 	
 	return self 
 end
@@ -69,6 +69,41 @@ function Deserializer:decompressBuffer(buf)
 	return Stream.new(
 		EncodingService:DecompressBuffer(
 			decodedBuffer, 
+			Enum.CompressionAlgorithm.Zstd
+		)
+	)
+end
+
+function Deserializer:decompressBufferFromParts(holder)
+	local parts = holder:GetChildren()
+
+	local buffers = {}
+
+	for i = 1, #parts do
+		local part = holder:FindFirstChild(tostring(i))
+		assert(part, `frame buffer missing part: {i}`)
+		
+		table.insert(buffers, buffer.fromstring(part.Value))
+	end
+
+	local totalSize = 0
+	for _, buf in buffers do
+		totalSize += buffer.len(buf)
+	end
+
+	local out = buffer.create(totalSize)
+	local offset = 0
+
+	for _, buf in buffers do
+		local chunkSize = buffer.len(buf)
+
+		buffer.copy(out, offset, buf, 0, chunkSize)
+		offset += chunkSize
+	end
+
+	return Stream.new(
+		EncodingService:DecompressBuffer(
+			EncodingService:Base64Decode(out), 
 			Enum.CompressionAlgorithm.Zstd
 		)
 	)
@@ -107,25 +142,8 @@ function Deserializer:deserializeValue(stream)
 			local cframeId = stream:readu32()
 			
 			return self.cframes[math.floor(cframeId / 1000)]:GetAttribute(tostring(cframeId)), cframeId
-		else 
-			local x = stream:readf32()
-			local y = stream:readf32()
-			local z = stream:readf32()
-
-			local rx, ry, rz
-			if serializeMethod == "Bytes" then
-				rx = stream:readf32()
-				ry = stream:readf32()
-				rz = stream:readf32()
-			elseif serializeMethod == "BytesLossy" then
-				rx = unpackf16(stream:readu16(), -1, 1)
-				ry = unpackf16(stream:readu16(), -1, 1)
-				rz = unpackf16(stream:readu16(), -1, 1)
-			end
-
-			local rw = math.sqrt(math.max(0, 1 - rx * rx - ry * ry - rz * rz))
-
-			return CFrame.new(x, y, z, rx, ry, rz, rw)
+		elseif serializeMethod == "Bytes" then
+			return stream:readCFrame(self.flags.CFramePosSizeT, self.flags.CFrameRotSizeT)
 		end
 	elseif valueType == PropertyType.String then
 		return self.strings[stream:readu16()]

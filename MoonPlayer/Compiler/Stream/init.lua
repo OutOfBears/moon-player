@@ -1,6 +1,19 @@
-local Stream = {};
-
 local BUFFER_SIZE = 65535;
+
+local INF = math.huge
+local LOG2 = math.log(2)
+local DENORM_SCALE = 5.960464477539063e-08
+
+local floor = math.floor
+local log = math.log
+
+local CF = require("@self/CFrame")
+
+local Stream = {
+    writeCFrame = CF.write,
+    readCFrame = CF.read
+};
+
 function Stream.new(buf: buffer | string, allocationSize: number?)
 	if typeof(buf) == "string" then
 		buf = buffer.fromstring(buf);
@@ -320,6 +333,83 @@ function Stream:tostring()
 	return buffer.tostring(self:tobuffer())
 end
 
+function Stream:writef16(n)
+    if self.write + 2 > self.capacity - 1 then
+        self:addBytesAndReallocate(self.alloc_size)
+    end
 
+    local bitOffset = self.write * 8
+
+    local sign = 0
+    if n < 0 then
+        sign = 1
+        n = -n
+    end
+
+    local bits
+
+    if n == INF then
+        bits = bit32.lshift(sign, 15) + bit32.lshift(0x1F, 10)
+
+    elseif n ~= n then
+        bits = bit32.lshift(sign, 15) + bit32.lshift(0x1F, 10) + 1
+
+    elseif n < 6.10352e-05 then
+        local mantissa = floor(n / DENORM_SCALE + 0.5)
+        bits = bit32.lshift(sign, 15) + mantissa
+
+    elseif n > 65504 then
+        bits = bit32.lshift(sign, 15) + bit32.lshift(0x1F, 10)
+
+    else
+        local exponent = floor(log(n) / LOG2)
+        local mantissa = floor((n / (2 ^ exponent) - 1) * 1024 + 0.5)
+        local exponentBits = exponent + 15
+
+        bits = bit32.lshift(sign, 15)
+            + bit32.lshift(exponentBits, 10)
+            + mantissa
+    end
+
+    buffer.writebits(self.buf, bitOffset, 16, bits)
+
+    if self.write == self.size then
+        self.size += 2
+    end
+    self.write += 2
+end
+
+function Stream:readf16()
+    if self.read + 2 > self.size then
+        error("attempt to read out of bounds")
+    end
+
+    local bitOffset = self.read * 8
+    local bits = buffer.readbits(self.buf, bitOffset, 16)
+    self.read += 2
+
+    local sign = bit32.rshift(bits, 15) == 1
+    local signMult = sign and -1 or 1
+
+    local exponent = bit32.band(bit32.rshift(bits, 10), 0x1F)
+    local mantissa = bit32.band(bits, 0x3FF)
+
+    if exponent == 0 then
+        if mantissa == 0 then
+            return 0 * signMult
+        else
+            return signMult * mantissa * DENORM_SCALE
+        end
+
+    elseif exponent == 0x1F then
+        if mantissa ~= 0 then
+            return 0/0
+        else
+            return sign and -INF or INF
+        end
+    end
+
+    return signMult * (1 + mantissa / 1024) * (2 ^ (exponent - 15))
+end
 
 return Stream
