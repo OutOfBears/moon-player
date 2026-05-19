@@ -20,7 +20,7 @@ local function parseKeyframes(keyframes, instance)
 		
 		local sortedPack = {}
 		for _, value in values:GetChildren() do
-			table.insert(sortedPack, tostring(value.Name))
+			table.insert(sortedPack, tonumber(value.Name))
 		end
 		
 		table.sort(sortedPack)
