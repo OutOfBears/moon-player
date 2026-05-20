@@ -12,141 +12,39 @@ local function fastResolvePath(path: MoonAnimPath, root)
 	return root:QueryDescendants(table.concat(tbl, " > "))[1]
 end
 
-local function toPath(path: MoonAnimPath): string
-	return table.concat(path.InstanceNames, ".")
-end
-
-local function _canon(s: string): string
-	s = tostring(s or "")
-	s = s:gsub("[\226\128\152\226\128\153]", "'")
-	s = s:gsub("%s+", " ")
-	s = s:gsub("^%s+", ""):gsub("%s+$", "")
-	return s:lower()
-end
-
-local function _compact(s: string): string
-	s = _canon(s)
-	s = s:gsub("[^%w]+", "")
-	return s
-end
-
-local function _findChildSmart(parent: Instance, childName: string): Instance?
-	local direct = parent:FindFirstChild(childName)
-	if direct then
-		return direct
-	end
-
-	local wantCanon = _canon(childName)
-	local wantCompact = _compact(childName)
-
-	for _, c in ipairs(parent:GetChildren()) do
-		if _canon(c.Name) == wantCanon then
-			return c
-		end
-	end
-
-	for _, c in ipairs(parent:GetChildren()) do
-		if _compact(c.Name) == wantCompact then
-			return c
-		end
-	end
-
-	local deepExact = parent:FindFirstChild(childName, true)
-	if deepExact then
-		return deepExact
-	end
-
-	for _, d in ipairs(parent:GetDescendants()) do
-		if _canon(d.Name) == wantCanon then
-			return d
-		end
-	end
-
-	for _, d in ipairs(parent:GetDescendants()) do
-		if _compact(d.Name) == wantCompact then
-			return d
-		end
-	end
-
-	return nil
-end
-
-local function _getServiceSmart(name: string): Instance?
-	local ok, svc = pcall(function()
-		return game:GetService(name)
-	end)
-	if ok and typeof(svc) == "Instance" then
-		return svc
-	end
-	return nil
-end
-
 local function resolveAnimPath(path: MoonAnimPath?, root: Instance?): Instance?
-	local fastResolve = fastResolvePath(path, root or game)
-	if fastResolve then
-		return fastResolve
-	end
-	
 	if not path then
 		return nil
 	end
 
-	local names = path.InstanceNames
-	local types = path.InstanceTypes
+	local numSteps = #path.InstanceNames
 	local current: Instance = root or game
 
-	local ok, result = pcall(function(): Instance?
-		local i = 2
-		while i <= #names do
-			local name = names[i]
-			local expectedClass = types[i]
-			local nextInst: Instance? = nil
+	local success = pcall(function()
+		for i = 2, numSteps do
+			local name = path.InstanceNames[i]
+			local class = path.InstanceTypes[i]
 
-			if current == game then
-				nextInst = _getServiceSmart(name) or _findChildSmart(current, name)
-			else
-				if current:IsA("Workspace") and name == "CurrentCamera" then
-					nextInst = (current :: Workspace).CurrentCamera
-				else
-					nextInst = _findChildSmart(current, name)
-				end
-			end
+			local nextInst = (current :: any)[name]
+			assert(typeof(nextInst) == "Instance")
+			assert(nextInst.ClassName == class)
 
-			if not nextInst then
-				local combined = name
-				local j = i + 1
-				while j <= #names do
-					combined ..= "." .. names[j]
-					local cand = _findChildSmart(current, combined)
-					if cand then
-						nextInst = cand
-						i = j
-						expectedClass = types[i]
-						break
-					end
-					j += 1
-				end
-			end
-
-			if not nextInst then
-				return nil
-			end
-
-			if expectedClass and nextInst.ClassName ~= expectedClass then
-				return nil
-			end
-
-			current = nextInst :: Instance
-			i += 1
+			current = nextInst
 		end
-
-		return current
 	end)
 
-	if not ok then
-		return nil
+	if success then
+		return current
 	end
-	return result
+	
+	local success, data = pcall(fastResolvePath, path, root)
+
+	if success and typeof(data) == "Instance" then
+		return data
+	end
+
+	warn("!! PATH RESOLVE FAILED:", table.concat(path.InstanceNames, "."))
+	return nil
 end
 
 local function resolveJoints(target: Instance)
