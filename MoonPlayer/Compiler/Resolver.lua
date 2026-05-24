@@ -37,7 +37,7 @@ local function resolveAnimPath(path: MoonAnimPath?, root: Instance?): Instance?
 		return current
 	end
 	
-	local success, data = pcall(fastResolvePath, path, root)
+	local success, data = pcall(fastResolvePath, path, current)
 
 	if success and typeof(data) == "Instance" then
 		return data

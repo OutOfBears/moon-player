@@ -161,13 +161,13 @@ local function ParseHierarchy(data, save)
 				end
 				
 				if keyframes then
-					local jointData = jointsHier[hier] or (findJointSmart and findJointSmart(hier)) or nil
-					if not jointData or not jointData.Joint then
+					local joint = jointsHier[hier] or (findJointSmart and findJointSmart(hier)) or nil
+					if not joint or not joint.Joint then
 						return error(`failed to resolve: {hier}`)
 					end
 					
-					local isMotor6D = jointData.Joint:IsA("Motor6D")
-					for _, keyframe in parseKeyframes(keyframes, realInstance, isMotor6D) do
+					local isMotor6D = joint.Joint:IsA("Motor6D")
+					for _, keyframe in parseKeyframes(keyframes, realInstance) do
 						local frameData = frameBuffer[tostring(keyframe.startTime)]
 						if not frameData then
 							frameData = {}
