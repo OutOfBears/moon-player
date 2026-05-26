@@ -315,15 +315,15 @@ local function update(delta)
 		end
 	
 		while true do
-				local marker = track.MarkerSequence[1]
+			local marker = track.MarkerSequence[1]
 
-				if typeof(marker) ~= "number" or currentFrame < marker then
-					break
-				end
-
-				emitMarkers(track, tostring(marker))
-				table.remove(track.MarkerSequence, 1)
+			if typeof(marker) ~= "number" or currentFrame < marker then
+				break
 			end
+
+			emitMarkers(track, tostring(marker))
+			table.remove(track.MarkerSequence, 1)
+		end
 		
 		track.FrameAdvance[tostring(lastFrame)] = nil
 		track.CurrentFrame = currentFrame

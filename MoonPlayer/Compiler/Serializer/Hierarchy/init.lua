@@ -48,6 +48,41 @@ local function readValue(value)
 	return baseValue
 end
 
+local function optimizeKeyframes(frames, isStatic)
+	local optimized = {}
+
+	local idx = 1
+	while idx <= #frames do
+		local currentFrame = frames[idx]
+
+		while idx <= #frames do
+			local nextFrame = frames[idx + 1]
+			if not nextFrame then
+				break 
+			end 
+
+			local diff = nextFrame.startTime - currentFrame.startTime
+			local isValueSame = EQ(nextFrame.value, currentFrame.value)
+
+			if diff < 1 or not isValueSame or currentFrame.eases then
+				break
+			end 
+
+			if nextFrame.eases then
+				currentFrame.count += diff - 1
+				break
+			end 
+			currentFrame.count += diff
+			idx += 1
+		end 
+
+		table.insert(optimized, currentFrame)
+		idx += 1
+	end 
+	
+	return optimized
+end
+
 local function parseKeyframes(keyframesInst, instance, duration)
 	local packs = keyframesInst:QueryDescendants(">Folder")
 
@@ -116,59 +151,41 @@ local function parseKeyframes(keyframesInst, instance, duration)
 
 	local frames = {}
 
-	while true do 
+	while true do
 		local currentFrame = table.remove(keyframes, 1)
 		if not currentFrame then
 			break
-		end 
+		end
 
-		while true and not currentFrame.static do
-			local nextFrame = keyframes[1]
-			if not nextFrame then
-				break
-			end
-
+		local nextFrame = keyframes[1]
+		if nextFrame then
 			local diff = nextFrame.startFrame - currentFrame.startFrame
 			local isValueSame = EQ(nextFrame.value, currentFrame.value)
 
-
-			if diff >= 1 and currentFrame.eases then
-				currentFrame.eases.target = nextFrame.value
-				currentFrame.count += diff - 1
-				
-				break
-			end
-
-			if diff > 1 and not currentFrame.eases and not isValueSame then
-				currentFrame.eases = {
-					target = nextFrame.value,
-					type = "Linear",
-					params = {
-						Direction = "In"
-					}
-				}
-
-				currentFrame.count += diff
-				break
-			end
-
-		 	if diff >= 1 and isValueSame then
-				if nextFrame.eases then
+			if not currentFrame.static then
+				if diff >= 1 and currentFrame.eases and not isValueSame then
+					currentFrame.eases.target = nextFrame.value
 					currentFrame.count += diff - 1
-					break
+
+				elseif diff > 1 and not currentFrame.eases and not isValueSame then
+					currentFrame.eases = {
+						target = nextFrame.value,
+						type = "Linear",
+						params = {
+							Direction = "In"
+						}
+					}
+
+					currentFrame.count += diff - 1
 				end
-
-				currentFrame.count += diff
+			elseif isValueSame then
 				table.remove(keyframes, 1)
-				continue
 			end
-
-			break
 		end
 
 		if currentFrame.eases and (not currentFrame.eases.target or currentFrame.static) then
 			currentFrame.eases = nil
-		end 
+		end
 
 		table.insert(frames, {
 			startTime = currentFrame.startFrame,
@@ -177,9 +194,9 @@ local function parseKeyframes(keyframesInst, instance, duration)
 			count = currentFrame.count,
 			ease = currentFrame.eases
 		})
-	end 
+	end
 
-	return frames
+	return optimizeKeyframes(frames)
 end
 
 local function insertMarker(markers, frame, identifier, name, kfMarkers)
