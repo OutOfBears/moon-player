@@ -102,9 +102,19 @@ local function parseKeyframes(keyframesInst, instance, disableOptimization)
 		)
 
 		local eases = inst:FindFirstChild("Eases")
+		local valueModifier 
+		
+		for name, handler in VALUE_HANDLERS do
+			if values:FindFirstChild(name) then
+				valueModifier = handler
+			end
+		end
 
 		for _, keyframe in values:GetChildren() do
 			local frameIdx =  tonumber(keyframe.Name)
+			if not frameIdx then
+				continue
+			end
 
 			local easeData
 
@@ -131,6 +141,10 @@ local function parseKeyframes(keyframesInst, instance, disableOptimization)
 			end 
 
 			local value = readValue(keyframe)
+			
+			if valueModifier then
+				value = valueModifier(keyframe, value)
+			end
 
 			table.insert(keyframes, {
 				pack = packId,
@@ -195,6 +209,10 @@ local function parseKeyframes(keyframesInst, instance, disableOptimization)
 			ease = currentFrame.eases
 		})
 	end
+
+	if disableOptimization then
+		return frames 
+	end 
 
 	return optimizeKeyframes(frames)
 end

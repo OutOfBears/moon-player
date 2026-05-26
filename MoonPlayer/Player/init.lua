@@ -290,11 +290,6 @@ local function update(delta)
 		local frameId = tostring(currentFrame)
 		local frame = track.FrameAdvance[frameId]
 
-		local frameCallback = track.FrameCallbacks[frameId]
-		if frameCallback then
-			task.spawn(frameCallback)
-		end
-
 		local instanceOverride = track.Deserializer.targetOverrides
 		local instances = track.Deserializer.targets
 		
@@ -314,6 +309,12 @@ local function update(delta)
 			end
 		end
 	
+
+		local frameCallback = track.FrameCallbacks[frameId]
+		if frameCallback then
+			task.spawn(frameCallback)
+		end
+		
 		while true do
 			local marker = track.MarkerSequence[1]
 
@@ -349,9 +350,8 @@ local function framePregen(delta)
 	end
 end
 
-RunService:BindToRenderStep("UPDATE_MOON", Enum.RenderPriority.Camera.Value - 2, update)
-RunService:BindToRenderStep("UPDATE_MOON_ATTACHMENTS", Enum.RenderPriority.Camera.Value - 1, updateAttachments)
+RunService.PreAnimation:Connect(update)
+RunService.PreSimulation:Connect(updateAttachments)
 RunService:BindToSimulation(framePregen, FRAME_ADVANCE_HZ, Enum.RenderPriority.Last.Value)
-
 
 return Player

@@ -168,6 +168,22 @@ function Deserializer:deserializeValue(stream)
 		else
 			return ColorSequence.new(keypoints)
 		end
+	elseif valueType == PropertyType.NumberSequence then
+		local keypoints = {}
+
+		for _ = 1, stream:readu8() do
+			table.insert(keypoints, NumberSequenceKeypoint.new(
+				stream:readf32(),
+				stream:readf32(),
+				stream:readf32()
+			))
+		end
+
+		if #keypoints == 1 then
+			return NumberSequence.new(keypoints[1].Value)
+		else 
+			return NumberSequence.new(keypoints)
+		end
 	end
 
 	return self:deserializeGenericValue(stream, valueType)
