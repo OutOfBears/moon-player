@@ -101,7 +101,7 @@ function Serializer:writePropertyValueToStream(stream, value)
 	elseif valueType == "NumberSequence" then
 		stream:writeu8(PropertyType.NumberSequence)
 
-		local keypoints = NumberSequence.new(1).Keypoints
+		local keypoints = value.Keypoints
 
 		if #keypoints == 2 and keypoints[1].Value == keypoints[2].Value and keypoints[1].Envelope == 0 then
 			keypoints[2] = nil

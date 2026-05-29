@@ -45,7 +45,7 @@ function Reader:processNextFrame()
 			
 			for _ = 1, stream:readu8() do
 				local name = assert(self.deserializer.strings[stream:readu16()])
-				local value, cfid = self.deserializer:deserializeValue(stream)
+				local value = self.deserializer:deserializeValue(stream)
 				
 				local prop = {
 					name = name,
