@@ -14,7 +14,7 @@ local SequentialReader = Compiler.SequentialReader
 local Deserializer = Compiler.Deserializer
 
 local PlayingTracks = {}
-local IGNORED_DEFAULTS = { "Emit" }
+local IGNORED_DEFAULTS = { "Emit", "CFrame" }
 
 local Player = {}
 
@@ -50,6 +50,7 @@ function Player.new(track, flags)
 		FinishedCallbacks = {},
 		FrameCallbacks = {},
 		ClassNames = {},
+		JointCFrames = {},
 
 		Flags = playerFlags,
 	}, { __index = Player })
@@ -123,6 +124,7 @@ function Player:_restore()
 	self.FrameAdvance = {}
 	self.MarkerSequence = {}
 	self.ClassNames = {}
+	self.JointCFrames = {}
 
 	self.CurrentAdvance = 0
 	self.CurrentFrame = -1
@@ -146,6 +148,14 @@ function Player:_restore()
 
 			continue
 		end 
+
+		if realInstance:IsA("Motor6D") then
+			self.JointCFrames[realInstance] = realInstance.C1
+		end 
+
+		if realInstance:IsA("BasePart") then
+			self.JointCFrames[instanceId] = realInstance.CFrame
+		end
 
 		for name, value in props do 
 			if table.find(IGNORED_DEFAULTS, name) then
@@ -180,6 +190,16 @@ function Player:_handleBaseFlags()
 	if flags.Duration ~= -1 then
 		self:SetDuration(flags.Duration)
 	end
+end
+
+function Player:_checkApplyPropTransformer(instanceId, name, value)
+	if name == "CFrame" then
+		return CFrame.new(self.JointCFrames[instanceId].Position) * value
+	elseif name == "Position" then
+		return value + self.JointCFrames[instanceId].Position
+	end 
+
+	return value
 end
 
 function Player:_advance()
@@ -225,6 +245,7 @@ function Player:_advance()
 			for name, valueData in props do
 				local prop = valueData.prop
 				local ease = prop.ease 
+				local value = self:_checkApplyPropTransformer(instanceId, name, prop.value)
 
 				if ease then
 					local easeFunc = EaseFuncs.Get({
@@ -234,12 +255,13 @@ function Player:_advance()
 
 					local progress = (valueData.originalDuration - valueData.duration)
 					local delta = easeFunc(progress / valueData.originalDuration)
+					local target = self:_checkApplyPropTransformer(instanceId, name, ease.target)
 
-					local interpolate = Interpolator.get(ease.target)
+					local interpolate = Interpolator.get(target)
 
-					instanceEntry[name] = interpolate(prop.value, ease.target, delta)
+					instanceEntry[name] = interpolate(value, target, delta)
 				else 
-					instanceEntry[name] = prop.value
+					instanceEntry[name] = value
 				end
 
 				valueData.duration -= 1

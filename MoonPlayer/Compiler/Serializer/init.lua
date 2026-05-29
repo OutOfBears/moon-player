@@ -86,7 +86,7 @@ function Serializer:writePropertyValueToStream(stream, value)
 		
 		if #keypoints == 2 and keypoints[1].Value == keypoints[2].Value then
 			keypoints[2] = nil
-		else 
+		else
 			stream:writeu8(#keypoints)
 
 			for _, keypoint  in keypoints do
@@ -113,7 +113,7 @@ function Serializer:writePropertyValueToStream(stream, value)
 			stream:writef32(keypoint.Value)
 			stream:writef32(keypoint.Envelope)
 		end
-	else 
+	else
 		print(debug.traceback())
 		warn("invalid type", valueType, value)
 	end

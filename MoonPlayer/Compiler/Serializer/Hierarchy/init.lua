@@ -72,6 +72,7 @@ local function optimizeKeyframes(frames, isStatic)
 				currentFrame.count += diff - 1
 				break
 			end 
+			
 			currentFrame.count += diff
 			idx += 1
 		end 
@@ -91,6 +92,8 @@ local function parseKeyframes(keyframesInst, instance, disableOptimization)
 	
 	local isStatic = StaticProps[instance.ClassName]
 		and StaticProps[instance.ClassName][keyframesInst.Name]
+
+	local isConstant = false
 
 	for _, inst in packs do
 		local packId = tonumber(inst.Name)
@@ -141,7 +144,11 @@ local function parseKeyframes(keyframesInst, instance, disableOptimization)
 			end 
 
 			local value = readValue(keyframe)
-			
+
+			if CONSTANT_INTERPS[typeof(value)] then
+				isConstant = true
+			end 
+
 			if valueModifier then
 				value = valueModifier(keyframe, value)
 			end
@@ -151,7 +158,9 @@ local function parseKeyframes(keyframesInst, instance, disableOptimization)
 				idx = frameIdx,
 				startFrame = frameIdx + packId,
 
-				static = isStatic or CONSTANT_INTERPS[typeof(value)],
+				static = isStatic or isConstant,
+				isConstant = isConstant,
+				
 				eases = easeData,
 				value = value,
 				count = 1
@@ -192,7 +201,9 @@ local function parseKeyframes(keyframesInst, instance, disableOptimization)
 
 					currentFrame.count += diff - 1
 				end
-			elseif isValueSame then
+			end 
+
+			if isValueSame and currentFrame.isConstant then
 				table.remove(keyframes, 1)
 			end
 		end
@@ -247,6 +258,16 @@ local function parseKFMarkers(track)
 	end
 
 	return markers
+end
+
+local function offsetValueByDefault(value, propName, default)
+	if propName == "CFrame" then
+		return default:Inverse() * value
+	elseif propName == "Position" then
+		return value - default
+	end
+
+	return value
 end
 
 local function ParseHierarchy(data, save, disableOptimization)
@@ -313,10 +334,10 @@ local function ParseHierarchy(data, save, disableOptimization)
 						end
 						
 						if isMotor6D then
-							value = value:Inverse() * default
+							value = value:Inverse()
 
 							if keyframe.ease then
-								keyframe.ease.target = keyframe.ease.target:Inverse() * default
+								keyframe.ease.target = keyframe.ease.target:Inverse()
 							end
 						end
 						
@@ -347,14 +368,27 @@ local function ParseHierarchy(data, save, disableOptimization)
 		else 
 			for _, child in frame:QueryDescendants(">Folder:not(#MarkerTrack)") do
 				local default = child:FindFirstChild("default")
+				local propName = child.Name
+				local defaultValue
+
+				local instDefaults = defaults[tostring(identifier)]
+				if not instDefaults then
+					instDefaults = {}
+					defaults[tostring(identifier)] = instDefaults
+				end
+
 				if default then
-					local instDefaults = defaults[tostring(identifier)]
-					if not instDefaults then
-						instDefaults = {}
-						defaults[tostring(identifier)] = instDefaults
+					defaultValue = readValue(default) 
+					instDefaults[child.Name] = defaultValue
+				else 
+					local success, defaultPropValue = pcall(function(...)
+						return child[propName]
+					end)
+
+					if success then
+						defaultValue = defaultPropValue
+						instDefaults[child.Name] = defaultPropValue 
 					end
-					
-					instDefaults[child.Name] = readValue(default)
 				end
 
 				for _, keyframe in parseKeyframes(child, realInstance, disableOptimization) do
@@ -370,11 +404,23 @@ local function ParseHierarchy(data, save, disableOptimization)
 						frameData[tostring(identifier)] = existingFrameData
 					end
 					
+					if keyframe.ease then
+						keyframe.ease.target = offsetValueByDefault(
+							keyframe.ease.target, 
+							propName, 
+							defaultValue
+						)
+					end 
+
 					local prop = {
 						props = {
 							[child.Name] = {
-								value = keyframe.value,
 								ease = keyframe.ease,
+								value = offsetValueByDefault(
+									keyframe.value, 
+									propName, 
+									defaultValue
+								)
 							}
 						},
 

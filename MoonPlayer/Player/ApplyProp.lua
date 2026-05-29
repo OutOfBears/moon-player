@@ -11,6 +11,14 @@ local SpecialProps do
 			}
 		},
 
+		Motor6D = {
+			Advanced = {
+				Transform = function(inst, value, player)
+					inst.Transform = value * player.JointCFrames[inst]
+				end
+			}
+		},
+
 		ParticleEmitter = {
 			Simple = {
 				Clear = ParticleEmitterInstance.Clear,
