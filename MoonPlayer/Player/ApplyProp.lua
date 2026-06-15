@@ -12,9 +12,9 @@ local SpecialProps do
 		},
 
 		Motor6D = {
-			Advanced = {
-				Transform = function(inst, value, player)
-					inst.Transform = value * player.JointCFrames[inst]
+			Simple = {
+				Transform = function(inst, value)
+					inst.Transform = value * inst.C1
 				end
 			}
 		},

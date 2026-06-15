@@ -260,8 +260,8 @@ local function parseKFMarkers(track)
 	return markers
 end
 
-local function offsetValueByDefault(value, propName, default)
-	if propName == "CFrame" then
+local function offsetValueByDefault(value, propName, default, realInstance)
+	if propName == "CFrame" and not realInstance:IsA("Attachment") then
 		return default:Inverse() * value
 	elseif propName == "Position" then
 		return value - default
@@ -408,7 +408,8 @@ local function ParseHierarchy(data, save, disableOptimization)
 						keyframe.ease.target = offsetValueByDefault(
 							keyframe.ease.target, 
 							propName, 
-							defaultValue
+							defaultValue,
+							realInstance
 						)
 					end 
 
@@ -419,7 +420,8 @@ local function ParseHierarchy(data, save, disableOptimization)
 								value = offsetValueByDefault(
 									keyframe.value, 
 									propName, 
-									defaultValue
+									defaultValue,
+									realInstance
 								)
 							}
 						},

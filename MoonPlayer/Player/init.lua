@@ -149,10 +149,6 @@ function Player:_restore()
 			continue
 		end 
 
-		if realInstance:IsA("Motor6D") then
-			self.JointCFrames[realInstance] = realInstance.C1
-		end 
-
 		if realInstance:IsA("BasePart") then
 			self.JointCFrames[instanceId] = realInstance.CFrame
 		end
@@ -216,7 +212,7 @@ function Player:_advance()
 	local state = self.FrameState
 	local advance = self.FrameAdvance 
 	local reader = self.Reader
-
+	
 	while self.CurrentAdvance ~= self.CurrentFrame + self.Flags.FrameAdvance do
 		local currentFrame = self.CurrentAdvance
 
@@ -245,6 +241,7 @@ function Player:_advance()
 		end
 
 		local frameBuffer = {}
+		
 		for instanceId, props in state do 
 			if table.find(self.Deserializer.unresolvedInstances, instanceId) then
 				continue
